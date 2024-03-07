@@ -8,7 +8,7 @@ mod server;
 use anyhow::Context;
 use axum::{middleware, Extension, Router};
 use dotenvy::dotenv;
-use sqlx::sqlite::SqlitePool;
+use sqlx::PgPool;
 use std::error::Error;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing::Level;
@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Database
     let connection_string = std::env::var("DATABASE_URL").context("'DATABASE_URL' no found")?;
-    let pool = SqlitePool::connect(&connection_string)
+    let pool = PgPool::connect(&connection_string)
         .await
         .context("Failed to connect to database")?;
 

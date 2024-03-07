@@ -11,7 +11,7 @@ use axum::{
 };
 use axum_extra::extract::cookie::CookieJar;
 use cookie::Cookie;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 mod auth_discord;
 mod auth_github;
@@ -28,7 +28,7 @@ pub fn auth_router() -> Router {
 
 pub async fn me(
     cookies: CookieJar,
-    Extension(pool): Extension<SqlitePool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let session_cookie = cookies.get(COOKIE_AUTH_SESSION);
 
@@ -48,7 +48,7 @@ pub async fn me(
 
 pub async fn logout(
     mut cookies: CookieJar,
-    Extension(pool): Extension<SqlitePool>,
+    Extension(pool): Extension<PgPool>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let session_cookie = cookies.get(COOKIE_AUTH_SESSION);
 

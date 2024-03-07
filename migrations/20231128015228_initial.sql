@@ -1,18 +1,16 @@
-CREATE TABLE
-    user (
-        id TEXT PRIMARY KEY NOT NULL,
-        account_id TEXT NOT NULL,
-        provider TEXT NOT NULL,
-        username TEXT NOT NULL,
-        image_url TEXT,
-        UNIQUE(account_id, provider)
-    );
+CREATE TABLE "user" (
+    id VARCHAR PRIMARY KEY,
+    account_id VARCHAR NOT NULL,
+    provider VARCHAR NOT NULL,
+    username VARCHAR NOT NULL,
+    image_url VARCHAR,
+    CONSTRAINT unique_provider_account UNIQUE (provider, account_id)
+);
 
-CREATE TABLE
-    user_session (
-        id TEXT PRIMARY KEY NOT NULL,
-        user_id TEXT REFERENCES user(id) NOT NULL,
-        created_at DATETIME NOT NULL,
-        expires_at DATETIME NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES user(id)
-    );
+CREATE TABLE user_session (
+    id VARCHAR PRIMARY KEY,
+    user_id VARCHAR NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES "user"(id) ON DELETE CASCADE
+);

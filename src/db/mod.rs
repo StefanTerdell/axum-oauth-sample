@@ -1,11 +1,11 @@
 use std::{str::FromStr, time::Duration};
 
 use crate::models::{AuthProvider, User, UserSession};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 pub async fn get_user_by_account_id(
-    pool: &SqlitePool,
+    pool: &PgPool,
     provider: AuthProvider,
     account_id: String,
 ) -> Result<Option<User>, anyhow::Error> {
@@ -14,8 +14,8 @@ pub async fn get_user_by_account_id(
         User,
         r#"
             SELECT id as "id: uuid::Uuid", account_id, provider, username, image_url
-            FROM user 
-            WHERE account_id = ?1 AND provider = ?2
+            FROM "user"
+            WHERE account_id = $1 AND provider = $2
         "#,
         account_id,
         provider
@@ -27,19 +27,19 @@ pub async fn get_user_by_account_id(
 }
 
 pub async fn get_user_by_session_id(
-    pool: &SqlitePool,
+    pool: &PgPool,
     session_id: &str,
 ) -> Result<Option<User>, anyhow::Error> {
     let session_id = Uuid::from_str(session_id)?;
     let user = sqlx::query_as!(
         User,
         r#"
-            SELECT user.id as "id: uuid::Uuid", account_id, provider, username, image_url
-            FROM user
-            LEFT JOIN user_session AS session ON session.user_id = user.id
-            WHERE session.id = ?1
+            SELECT "user".id as "id: uuid::Uuid", account_id, provider, username, image_url
+            FROM "user"
+            LEFT JOIN user_session AS session ON session.user_id = "user".id
+            WHERE session.id = $1
         "#,
-        session_id
+        session_id.to_string()
     )
     .fetch_optional(pool)
     .await?;
@@ -58,7 +58,7 @@ pub async fn get_user_by_session_id(
 }
 
 pub async fn create_user(
-    pool: &SqlitePool,
+    pool: &PgPool,
     account_id: String,
     provider: AuthProvider,
     username: String,
@@ -69,11 +69,11 @@ pub async fn create_user(
     let new_user = sqlx::query_as!(
         User,
         r#"
-            INSERT INTO user (id, account_id, provider, username, image_url) 
-            VALUES (?1, ?2, ?3, ?4, ?5) 
+            INSERT INTO "user" (id, account_id, provider, username, image_url)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING id as "id: uuid::Uuid", account_id, provider, username, image_url
         "#,
-        id,
+        id.to_string(),
         account_id,
         provider,
         username,
@@ -86,7 +86,7 @@ pub async fn create_user(
 }
 
 pub async fn create_user_session(
-    pool: &SqlitePool,
+    pool: &PgPool,
     user_id: Uuid,
     session_duration: Duration,
 ) -> Result<UserSession, anyhow::Error> {
@@ -97,10 +97,10 @@ pub async fn create_user_session(
     sqlx::query!(
         r#"
             INSERT INTO user_session (id, user_id, created_at, expires_at)
-            VALUES (?1, ?2, ?3, ?4)
+            VALUES ($1, $2, $3, $4)
         "#,
-        session_id,
-        user_id,
+        session_id.to_string(),
+        user_id.to_string(),
         created_at,
         expires_at
     )
@@ -110,15 +110,15 @@ pub async fn create_user_session(
     let user_session = sqlx::query_as!(
         UserSession,
         r#"
-            SELECT 
+            SELECT
                 id as "id: uuid::Uuid",
                 user_id as "user_id: uuid::Uuid",
                 created_at as "created_at: _",
-                expires_at as "expires_at: _" 
+                expires_at as "expires_at: _"
             FROM user_session
-            WHERE id = ?1
+            WHERE id = $1
         "#,
-        session_id
+        session_id.to_string()
     )
     .fetch_one(pool)
     .await?;
@@ -126,31 +126,31 @@ pub async fn create_user_session(
     Ok(user_session)
 }
 
-pub async fn delete_user_session(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<bool, anyhow::Error> {
+pub async fn delete_user_session(pool: &PgPool, session_id: &str) -> Result<bool, anyhow::Error> {
     let session_id = Uuid::from_str(session_id)?;
     let mut conn = pool.acquire().await?;
 
-    let result = sqlx::query!("DELETE FROM user_session WHERE id = ?1", session_id)
-        .execute(&mut *conn)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM user_session WHERE id = $1",
+        session_id.to_string()
+    )
+    .execute(&mut *conn)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
 
 pub async fn delete_expired_user_sessions(
-    pool: &SqlitePool,
+    pool: &PgPool,
     user_id: Uuid,
 ) -> Result<usize, anyhow::Error> {
     let now = chrono::offset::Utc::now().naive_utc();
     let result = sqlx::query!(
         r#"
-            DELETE FROM user_session 
-            WHERE user_id = ?1 AND ?2 > expires_at
+            DELETE FROM user_session
+            WHERE user_id = $1 AND $2 > expires_at
         "#,
-        user_id,
+        user_id.to_string(),
         now
     )
     .execute(pool)

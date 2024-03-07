@@ -4,7 +4,7 @@ use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::{async_trait, Extension};
 use axum_extra::extract::CookieJar;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 use crate::constants::{COOKIE_AUTH_SESSION, COOKIE_THEME};
 use crate::misc::Theme;
@@ -28,7 +28,7 @@ where
     type Rejection = UnauthorizedUser;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let Extension(pool) = Extension::<SqlitePool>::from_request_parts(parts, state)
+        let Extension(pool) = Extension::<PgPool>::from_request_parts(parts, state)
             .await
             .map_err(|err| {
                 tracing::error!("{err}");

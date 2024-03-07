@@ -21,7 +21,7 @@ use crate::{
     models::AuthProvider,
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 //  Checkout available fields on: https://discord.com/developers/docs/resources/user
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -110,7 +110,7 @@ struct AuthRequest {
 
 async fn callback(
     cookies: CookieJar,
-    Extension(pool): Extension<SqlitePool>,
+    Extension(pool): Extension<PgPool>,
     Query(query): Query<AuthRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let code = query.code;
