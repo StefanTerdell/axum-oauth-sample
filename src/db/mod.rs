@@ -13,7 +13,7 @@ pub async fn get_user_by_account_id(
     let user = sqlx::query_as!(
         User,
         r#"
-            SELECT id as "id: uuid::Uuid", account_id, provider, username, image_url
+            SELECT id, account_id, provider, username, image_url
             FROM "user"
             WHERE account_id = $1 AND provider = $2
         "#,
@@ -34,7 +34,7 @@ pub async fn get_user_by_session_id(
     let user = sqlx::query_as!(
         User,
         r#"
-            SELECT "user".id as "id: uuid::Uuid", account_id, provider, username, image_url
+            SELECT "user".id, account_id, provider, username, image_url
             FROM "user"
             LEFT JOIN user_session AS session ON session.user_id = "user".id
             WHERE session.id = $1
@@ -45,7 +45,7 @@ pub async fn get_user_by_session_id(
     .await?;
 
     if let Some(user) = &user {
-        let deleted = delete_expired_user_sessions(pool, user.id).await?;
+        let deleted = delete_expired_user_sessions(pool, &user.id).await?;
         if deleted > 0 {
             tracing::info!(
                 "{deleted:?} expired sessions where deleted for user '{}'",
@@ -71,7 +71,7 @@ pub async fn create_user(
         r#"
             INSERT INTO "user" (id, account_id, provider, username, image_url)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id as "id: uuid::Uuid", account_id, provider, username, image_url
+            RETURNING id, account_id, provider, username, image_url
         "#,
         id.to_string(),
         account_id,
@@ -87,7 +87,7 @@ pub async fn create_user(
 
 pub async fn create_user_session(
     pool: &PgPool,
-    user_id: Uuid,
+    user_id: impl Into<String>,
     session_duration: Duration,
 ) -> Result<UserSession, anyhow::Error> {
     let session_id = Uuid::new_v4();
@@ -100,7 +100,7 @@ pub async fn create_user_session(
             VALUES ($1, $2, $3, $4)
         "#,
         session_id.to_string(),
-        user_id.to_string(),
+        user_id.into(),
         created_at,
         expires_at
     )
@@ -111,8 +111,8 @@ pub async fn create_user_session(
         UserSession,
         r#"
             SELECT
-                id as "id: uuid::Uuid",
-                user_id as "user_id: uuid::Uuid",
+                id,
+                user_id,
                 created_at as "created_at: _",
                 expires_at as "expires_at: _"
             FROM user_session
@@ -142,7 +142,7 @@ pub async fn delete_user_session(pool: &PgPool, session_id: &str) -> Result<bool
 
 pub async fn delete_expired_user_sessions(
     pool: &PgPool,
-    user_id: Uuid,
+    user_id: impl Into<String>,
 ) -> Result<usize, anyhow::Error> {
     let now = chrono::offset::Utc::now().naive_utc();
     let result = sqlx::query!(
@@ -150,7 +150,7 @@ pub async fn delete_expired_user_sessions(
             DELETE FROM user_session
             WHERE user_id = $1 AND $2 > expires_at
         "#,
-        user_id.to_string(),
+        user_id.into(),
         now
     )
     .execute(pool)

@@ -1,6 +1,7 @@
 use self::{
-    auth_discord::discord_auth_router, auth_github::github_auth_router,
-    auth_google::google_auth_router,
+    // auth_discord::discord_auth_router, auth_github::github_auth_router,
+    // auth_google::google_auth_router,
+    auth_auth0::auth0_router,
 };
 use crate::constants::COOKIE_AUTH_SESSION;
 use axum::{
@@ -13,17 +14,16 @@ use axum_extra::extract::cookie::CookieJar;
 use cookie::Cookie;
 use sqlx::PgPool;
 
-mod auth_discord;
-mod auth_github;
-mod auth_google;
+mod auth_auth0;
+// mod auth_discord;
+// mod auth_github;
+// mod auth_google;
 
 pub fn auth_router() -> Router {
     Router::new()
         .route("/api/auth/me", get(me))
         .route("/api/auth/logout", get(logout))
-        .merge(google_auth_router())
-        .merge(github_auth_router())
-        .merge(discord_auth_router())
+        .merge(auth0_router())
 }
 
 pub async fn me(

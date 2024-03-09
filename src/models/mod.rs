@@ -1,9 +1,8 @@
 use chrono::NaiveDateTime;
-use uuid::Uuid;
 
 #[derive(Debug, serde::Serialize)]
 pub struct User {
-    pub id: Uuid,
+    pub id: String,
     pub account_id: String,
     pub provider: AuthProvider,
     pub username: String,
@@ -12,8 +11,8 @@ pub struct User {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct UserSession {
-    pub id: Uuid,
-    pub user_id: Uuid,
+    pub id: String,
+    pub user_id: String,
     pub created_at: NaiveDateTime,
     pub expires_at: NaiveDateTime,
 }
@@ -28,6 +27,7 @@ pub enum AuthProvider {
     Google,
     Github,
     Discord,
+    Auth0,
 
     // This variant should not be constructed
     #[allow(private_interfaces)]
